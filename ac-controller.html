@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AC Controller Sensor</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #eef1f7;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    color: #1a2233;
+  }
+  .app { max-width: 585px; margin: 0 auto; padding: 18px 20px 30px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+  h1 { font-size: 25px; font-weight: 700; margin: 0; }
+  .status {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border-radius: 999px; padding: 11px 16px;
+    font-size: 17px; font-weight: 600; color: #6b7384;
+    box-shadow: 0 2px 8px rgba(30,50,90,.08);
+  }
+  .status .dot { width: 10px; height: 10px; border-radius: 50%; background: #e5534b; }
+  .status.online .dot { background: #34c759; }
+
+  .card {
+    background: #fff; border-radius: 28px; padding: 32px 33px;
+    box-shadow: 0 4px 14px rgba(30,50,90,.08);
+    margin-bottom: 26px;
+  }
+  .label {
+    font-size: 15px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: #9aa3b5;
+  }
+
+  .ac { padding-bottom: 36px; }
+  .ac .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .ac svg { width: 42px; height: 42px; margin-top: -6px; }
+  .ac .temp { font-size: 54px; font-weight: 700; height: 56px; margin: 26px 0 0; line-height: 1; }
+  .ac .temp.empty { width: 52px; height: 6px; background: #1a2233; margin: 52px 0 36px; border-radius: 1px; }
+  .ac .mode { font-size: 21px; color: #6b7384; }
+
+  .room { display: flex; align-items: center; justify-content: space-between; padding: 36px 33px; }
+  .room .name { font-size: 19px; color: #6b7384; }
+  .room .right { display: flex; align-items: center; gap: 14px; }
+  .room .val { text-align: right; }
+  .room .val b { display: block; font-size: 28px; line-height: 14px; }
+  .room .val b.empty { width: 24px; height: 3px; background: #1a2233; margin: 0 0 14px auto; }
+  .room .val small { font-size: 16px; color: #9aa3b5; }
+  .room .pip { width: 16px; height: 16px; border-radius: 50%; background: #9aa3b5; }
+  .room .pip.on { background: #34c759; }
+
+  .section { margin: 0 0 12px 6px; }
+
+  .seg {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: #e9edf4; border: 1px solid #e3e8f0; border-radius: 20px;
+    padding: 5px; margin-bottom: 36px; opacity: .6;
+  }
+  .seg button {
+    border: 0; background: transparent; padding: 22px 0;
+    font: inherit; font-size: 20px; font-weight: 600; color: #b4bccb;
+    border-radius: 16px; cursor: default;
+  }
+  .seg.enabled { opacity: 1; }
+  .seg.enabled button { color: #6b7384; cursor: pointer; }
+  .seg.enabled button.active { background: #fff; color: #1a2233; box-shadow: 0 2px 6px rgba(30,50,90,.12); }
+
+  .remote { display: flex; align-items: center; gap: 18px; padding: 22px 27px; border-radius: 28px; margin-bottom: 24px; }
+  .remote button {
+    border: 0; background: #f2f7fc; color: #8fc3ea; font: inherit;
+    font-size: 20px; font-weight: 600; padding: 22px 25px; border-radius: 20px;
+    white-space: nowrap; cursor: default;
+  }
+  .remote button:not(:disabled) { color: #1582d0; cursor: pointer; }
+  .remote p { margin: 0; font-size: 18px; color: #6b7384; line-height: 1.35; }
+
+  .connect {
+    width: 100%; border: 0; border-radius: 24px; padding: 26px 0;
+    background: #1582d0; color: #fff; font: inherit; font-size: 21px; font-weight: 700;
+    box-shadow: 0 8px 20px rgba(21,130,208,.3); cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AC Controller Sensor</h1>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Offline</span></div>
+  </header>
+
+  <section class="card ac">
+    <div class="top">
+      <span class="label">Air Conditioner</span>
+      <svg viewBox="0 0 48 48" fill="none" stroke="#c9dff0" stroke-width="3.5" stroke-linecap="round">
+        <path d="M24 4v40M6.7 14l34.6 20M6.7 34l34.6-20"/>
+        <path d="M19 7l5 4 5-4M19 41l5-4 5 4M5 19l7 1-1 7M43 29l-7-1 1-7M5 29l6-3M43 19l-6 3" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <div class="temp empty" id="acTemp"></div>
+    <div class="mode" id="acMode">25°C · Cool</div>
+  </section>
+
+  <section class="card room">
+    <span class="name">Room</span>
+    <div class="right">
+      <div class="val"><b class="empty" id="roomVal"></b><small id="roomText">Waiting for sensor</small></div>
+      <span class="pip" id="roomPip"></span>
+    </div>
+  </section>
+
+  <div class="label section">Control</div>
+  <div class="seg" id="seg">
+    <button data-mode="auto">Auto</button>
+    <button data-mode="on">On</button>
+    <button data-mode="off">Off</button>
+  </div>
+
+  <div class="label section">Remote</div>
+  <section class="card remote">
+    <button id="pairBtn" disabled>Pair remote</button>
+    <p>Pair the controller with your AC remote.</p>
+  </section>
+
+  <button class="connect" id="connectBtn">Connect</button>
+</div>
+
+<script>
+  // Hook your real BLE / WebSocket / fetch code in here.
+  const $ = id => document.getElementById(id);
+  let connected = false;
+
+  function setConnected(on) {
+    connected = on;
+    $('status').classList.toggle('online', on);
+    $('statusText').textContent = on ? 'Online' : 'Offline';
+    $('seg').classList.toggle('enabled', on);
+    $('pairBtn').disabled = !on;
+    $('connectBtn').textContent = on ? 'Disconnect' : 'Connect';
+  }
+
+  $('connectBtn').onclick = () => {
+    // TODO: replace with your real connect logic
+    setConnected(!connected);
+  };
+
+  document.querySelectorAll('#seg button').forEach(b => {
+    b.onclick = () => {
+      if (!connected) return;
+      document.querySelectorAll('#seg button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      // TODO: send b.dataset.mode to the controller
+    };
+  });
+
+  $('pairBtn').onclick = () => {
+    // TODO: start remote pairing
+  };
+</script>
+</body>
+</html>
